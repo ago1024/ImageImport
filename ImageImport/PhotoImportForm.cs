@@ -14,261 +14,335 @@ using MediaDevices;
 
 namespace ImageImport
 {
-    public partial class PhotoImportForm : Form
-    {
-        private int GetIconIndex(DeviceType deviceType)
-        {
-            switch (deviceType)
-            {
-                default:
-                case DeviceType.Generic:
-                    return 701;
-                case DeviceType.Camera:
-                    return 702;
-                case DeviceType.Phone:
-                    return 703;
-                case DeviceType.MediaPlayer:
-                    return 704;
-                case DeviceType.Video:
-                    return 705;
-                case DeviceType.PersonalInformationManager:
-                    return 706;
-                case DeviceType.AudioRecorder:
-                    return 707;
-            }
-        }
+	public partial class PhotoImportForm : Form
+	{
+		private int GetIconIndex(DeviceType deviceType)
+		{
+			switch (deviceType)
+			{
+				default:
+				case DeviceType.Generic:
+					return 701;
+				case DeviceType.Camera:
+					return 702;
+				case DeviceType.Phone:
+					return 703;
+				case DeviceType.MediaPlayer:
+					return 704;
+				case DeviceType.Video:
+					return 705;
+				case DeviceType.PersonalInformationManager:
+					return 706;
+				case DeviceType.AudioRecorder:
+					return 707;
+			}
+		}
 
-        public PhotoImportForm()
-        {
-            InitializeComponent();
+		public PhotoImportForm()
+		{
+			InitializeComponent();
 
-            var path = Environment.ExpandEnvironmentVariables(@"%systemroot%\system32\wpdshext.dll");
+			var path = Environment.ExpandEnvironmentVariables(@"%systemroot%\system32\wpdshext.dll");
 
-            DeviceList.LargeImageList = new ImageList
-            {
-                ImageSize = new Size(32, 32),
-                ColorDepth = ColorDepth.Depth32Bit
-            };
-            DeviceList.SmallImageList = new ImageList
-            {
-                ImageSize = new Size(16, 16),
-                ColorDepth = ColorDepth.Depth32Bit
-            };
+			DeviceList.LargeImageList = new ImageList
+			{
+				ImageSize = new Size(32, 32),
+				ColorDepth = ColorDepth.Depth32Bit
+			};
+			DeviceList.SmallImageList = new ImageList
+			{
+				ImageSize = new Size(16, 16),
+				ColorDepth = ColorDepth.Depth32Bit
+			};
 
-            foreach (DeviceType deviceType in Enum.GetValues(typeof(DeviceType)))
-            {
-                var icon = GetIconIndex(deviceType);
-                var large = IconLoader.GetIcon(path, icon, false);
-                var small = IconLoader.GetIcon(path, icon, true);
+			foreach (DeviceType deviceType in Enum.GetValues(typeof(DeviceType)))
+			{
+				var icon = GetIconIndex(deviceType);
+				var large = IconLoader.GetIcon(path, icon, false);
+				var small = IconLoader.GetIcon(path, icon, true);
 
-                DeviceList.LargeImageList.Images.Add(large);
-                DeviceList.SmallImageList.Images.Add(small);
-            }
+				DeviceList.LargeImageList.Images.Add(large);
+				DeviceList.SmallImageList.Images.Add(small);
+			}
 
-            Icon = IconLoader.GetIcon(path, GetIconIndex(DeviceType.Phone), false);
+			Icon = IconLoader.GetIcon(path, GetIconIndex(DeviceType.Phone), false);
 
-            Import.Enabled = DeviceList.SelectedItems.Count > 0;
-        }
+			Import.Enabled = DeviceList.SelectedItems.Count > 0;
+		}
 
-        private void DeviceList_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
-        {
-            Import.Enabled = DeviceList.SelectedItems.Count > 0;
-        }
+		private void DeviceList_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
+		{
+			Import.Enabled = DeviceList.SelectedItems.Count > 0;
+		}
 
-        private void ScanDevices_Click(object sender, EventArgs e)
-        {
-            var devices = MediaDevices.MediaDevice.GetDevices();
+		private void ScanDevices_Click(object sender, EventArgs e)
+		{
+			var devices = MediaDevices.MediaDevice.GetDevices();
 
-            DeviceList.Items.Clear();
-            foreach (MediaDevice device in devices)
-            {
-                if (!device.IsConnected)
-                    device.Connect();
-                var item = new ListViewItem(device.FriendlyName)
-                {
-                    ImageIndex = (int)device.DeviceType,
-                    Tag = device
-                };
-                DeviceList.Items.Add(item);
-                device.Disconnect();
-            }
-        }
+			DeviceList.Items.Clear();
+			foreach (MediaDevice device in devices)
+			{
+				if (!device.IsConnected)
+					device.Connect();
+				var item = new ListViewItem(device.FriendlyName)
+				{
+					ImageIndex = (int)device.DeviceType,
+					Tag = device
+				};
+				DeviceList.Items.Add(item);
 
-        private async void Import_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                DeviceList.Enabled = false;
-                ScanDevices.Enabled = false;
-                Import.Enabled = false;
-                TargetFolder.Enabled = false;
+				device.Disconnect();
+			}
+		}
 
-                foreach (ListViewItem item in DeviceList.SelectedItems)
-                {
-                    MediaDevice device = item.Tag as MediaDevice;
-                    if (device == null)
-                        return;
+		private async void Import_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				DeviceList.Enabled = false;
+				ScanDevices.Enabled = false;
+				Import.Enabled = false;
+				TargetFolder.Enabled = false;
 
-                    if (!device.IsConnected)
-                        device.Connect();
+				foreach (ListViewItem item in DeviceList.SelectedItems)
+				{
+					MediaDevice device = item.Tag as MediaDevice;
+					if (device == null)
+						return;
+
+					if (!device.IsConnected)
+						device.Connect();
 
 
-                    await Task.Run(() => CopyDevice(device));
+					await Task.Run(() => CopyDevice(device));
 
-                    device.Disconnect();
-                }
+					device.Disconnect();
+				}
 
-                Progress.Text = "Fertig";
-            }
-            finally
-            {
-                DeviceList.Enabled = true;
-                ScanDevices.Enabled = true;
-                Import.Enabled = DeviceList.SelectedItems.Count > 0;
-                TargetFolder.Enabled = true;
-            }
-        }
+				Progress.Text = "Fertig";
+			}
+			finally
+			{
+				DeviceList.Enabled = true;
+				ScanDevices.Enabled = true;
+				Import.Enabled = DeviceList.SelectedItems.Count > 0;
+				TargetFolder.Enabled = true;
+			}
+		}
 
-        private void OnProgress(object sender, ImageEnumerable.ProgressEvent e)
-        {
-            Progress.Invoke((MethodInvoker) delegate {
-                Progress.Text = e.FileName;
-            });
-        }
+		private void OnProgress(object sender, ImageEnumerable.ProgressEvent e)
+		{
+			Progress.Invoke((MethodInvoker) delegate {
+				Progress.Text = e.FileName;
+			});
+		}
 
-        private void CopyDevice(MediaDevice device)
-        {
-            MediaDirectoryInfo root = device.GetRootDirectory();
-            string imageRoot = TargetFolder.Text;
+		private void OnLog(string message)
+		{
+			System.Diagnostics.Debug.WriteLine(message);
+			Log.Invoke((MethodInvoker)delegate {
+				Log.AppendText(message + Environment.NewLine);
+			});
+		}
 
-            string formatter(MediaFileInfo file) => string.Format(@"{1:yyyy-MM-dd}\{0}", file.Name, file.DateAuthored, device.FriendlyName);
+		private void OnLog(string format, params object[] args)
+		{
+			OnLog(String.Format(format, args));
+		}
 
-            IEnumerable<ImageEntry> entries = new List<ImageEntry>();
-            string[] searchPatterns = { "*.jpg" , "*.mp4" };
+		private void OnLog(object sender, ImageEnumerable.LogEvent e)
+		{
+			OnLog(e.Message);
+		}
 
-            foreach (string searchPattern in searchPatterns) {
-                ImageEnumerable images = new ImageEnumerable(root, imageRoot, searchPattern, formatter);
-                images.ProgressHandler += OnProgress;
+		private void CopyDevice(MediaDevice device)
+		{
+			MediaDirectoryInfo root = device.GetRootDirectory();
+			string imageRoot = TargetFolder.Text;
 
-                entries = entries.Concat(images);
-            }
+			string formatter(MediaFileInfo file) => string.Format(@"{1:yyyy-MM-dd}\{0}", file.Name, file.DateAuthored, device.FriendlyName);
 
-            foreach (var entry in entries)
-            {
-                System.Diagnostics.Debug.WriteLine("{0}: importing {1}", entry.Source.FullName, entry.Target);
+			IEnumerable<ImageEntry> entries = new List<ImageEntry>();
+			string[] searchPatterns = { "*.jpg" , "*.mp4" };
 
-                Directory.CreateDirectory(Path.GetDirectoryName(entry.Target));
+			foreach (string searchPattern in searchPatterns) {
+				ImageEnumerable images = new ImageEnumerable(device, root, imageRoot, searchPattern, formatter);
+				images.ProgressHandler += OnProgress;
+				images.LogHandler += OnLog;
 
-                using (Stream input = entry.Source.OpenRead())
-                {
-                    using (Stream output = File.OpenWrite(entry.Target))
-                    {
-                        input.CopyTo(output);
-                    }
-                }
+				entries = entries.Concat(images);
+			}
 
-                ListViewItem item = new ListViewItem(entry.Source.Name);
-                item.SubItems.Add(entry.Source.FullName);
-                item.SubItems.Add(entry.Target);
+			foreach (var entry in entries)
+			{
+				if (!device.FileExists(entry.Source.FullName))
+				{
+					OnLog($"Missing file {entry.Source.FullName}");
+					continue;
+				}
 
-                ItemList.Invoke((MethodInvoker)delegate {
-                    ItemList.Items.Add(item);
-                });
-            }
-        }
+				System.Diagnostics.Debug.WriteLine("{0}: importing {1}", entry.Source.FullName, entry.Target);
 
-        public class ImageEntry {
+				try
+				{
+					Directory.CreateDirectory(Path.GetDirectoryName(entry.Target));
 
-            public ImageEntry(MediaFileInfo source, string target)
-            {
-                Source = source;
-                Target = target;
-            }
+					using (Stream input = entry.Source.OpenRead())
+					{
+						using (Stream output = File.OpenWrite(entry.Target))
+						{
+							input.CopyTo(output);
+						}
+					}
 
-            public MediaFileInfo Source { get; }
-            public string Target { get; }
-        }
+					ListViewItem item = new ListViewItem(entry.Source.Name);
+					item.SubItems.Add(entry.Source.FullName);
+					item.SubItems.Add(entry.Target);
 
-        private class ImageEnumerable : IEnumerable<ImageEntry>
-        {
-            private readonly MediaDirectoryInfo Root;
-            private readonly string TargetFolder;
-            private readonly string SearchPattern;
-            private readonly Func<MediaFileInfo, string> NameTransformation;
+					ItemList.Invoke((MethodInvoker)delegate
+					{
+						ItemList.Items.Add(item);
+					});
+				}
+				catch (Exception e)
+				{
+					File.Delete(entry.Target);
+					OnLog(e.ToString());
+				}
+			}
+		}
 
-            public event EventHandler<ProgressEvent> ProgressHandler;
+		public class ImageEntry {
 
-            public class ProgressEvent : EventArgs
-            {
-                public ProgressEvent(string fileName)
-                {
-                    FileName = fileName;
-                }
+			public ImageEntry(MediaFileInfo source, string target)
+			{
+				Source = source;
+				Target = target;
+			}
 
-                public string FileName { get; }
-            }
+			public MediaFileInfo Source { get; }
+			public string Target { get; }
+		}
 
-            protected void OnProgress(string fileName)
-            {
-                ProgressEvent e = new ProgressEvent(fileName);
-                ProgressHandler?.Invoke(this, e);
-            }
+		private class ImageEnumerable : IEnumerable<ImageEntry>
+		{
+			private readonly MediaDevice Device;
+			private readonly MediaDirectoryInfo Root;
+			private readonly string TargetFolder;
+			private readonly string SearchPattern;
+			private readonly Func<MediaFileInfo, string> NameTransformation;
 
-            public ImageEnumerable(MediaDirectoryInfo root, string targetFolder, string searchPattern, Func<MediaFileInfo, string> nameTransformation)
-            {
-                Root = root;
-                TargetFolder = targetFolder;
-                NameTransformation = nameTransformation;
-                SearchPattern = searchPattern;
-            }
+			public event EventHandler<ProgressEvent> ProgressHandler;
 
-            public IEnumerator<ImageEntry> GetEnumerator()
-            {
-                foreach (var folder in new FolderEnumerable(Root))
-                {
-                    OnProgress(folder.FullName);
+			public class ProgressEvent : EventArgs
+			{
+				public ProgressEvent(string fileName)
+				{
+					FileName = fileName;
+				}
 
-                    foreach (MediaFileInfo file in folder.EnumerateFiles(SearchPattern))
-                    {
-                        OnProgress(file.FullName);
+				public string FileName { get; }
+			}
 
-                        string target = Path.Combine(TargetFolder, NameTransformation.Invoke(file));
+			protected void OnProgress(string fileName)
+			{
+				ProgressEvent e = new ProgressEvent(fileName);
+				ProgressHandler?.Invoke(this, e);
+			}
 
-                        if (File.Exists(target) && (ulong)new FileInfo(target).Length == file.Length)
-                        {
-                            System.Diagnostics.Debug.WriteLine("{0}: {1} exists, skipping", file.FullName, target);
-                            continue;
-                        }
-                        else if (File.Exists(target))
-                        {
-                            int i = 1;
-                            string newName = target;
-                            do
-                                newName = Path.Combine(Path.GetDirectoryName(target), Path.GetFileNameWithoutExtension(target) + "_" + i++ + Path.GetExtension(target));
-                            while (File.Exists(newName) && (ulong)new FileInfo(newName).Length != file.Length);
+			public event EventHandler<LogEvent> LogHandler;
 
-                            if (File.Exists(newName))
-                            {
-                                System.Diagnostics.Debug.WriteLine("{0}: {1} exists, skipping", file.FullName, newName);
-                                continue;
-                            }
+			public class LogEvent : EventArgs
+			{
+				public LogEvent(string message)
+				{
+					Message = message;
+				}
 
-                            System.Diagnostics.Debug.WriteLine("{0}: {1} exists, writing with new name {2}", file.FullName, target, newName);
-                            yield return new ImageEntry(file, newName);
-                        }
-                        else
-                        {
-                            yield return new ImageEntry(file, target);
-                        }
-                    }
-                }
-            }
+				public string Message { get; }
+			}
 
-            IEnumerator IEnumerable.GetEnumerator()
-            {
-                return GetEnumerator();
-            }
-        }
+			protected void OnLog(string message)
+			{
+				LogEvent e = new LogEvent(message);
+				LogHandler?.Invoke(this, e);
+			}
 
-    }
+			private void OnLog(string format, params object[] args)
+			{
+				OnLog(String.Format(format, args));
+			}
+
+			public ImageEnumerable(MediaDevice  device, MediaDirectoryInfo root, string targetFolder, string searchPattern, Func<MediaFileInfo, string> nameTransformation)
+			{
+				Device = device;
+				Root = root;
+				TargetFolder = targetFolder;
+				NameTransformation = nameTransformation;
+				SearchPattern = searchPattern;
+			}
+
+			private List<string> GetSkipList()
+			{
+				string filename = Path.Combine(TargetFolder, ".skiplist");
+				if (File.Exists(filename))
+				{
+					return File.ReadLines(filename).ToList();
+				}
+				return new List<string>();
+			}
+
+			public IEnumerator<ImageEntry> GetEnumerator()
+			{
+				var folders = new FolderEnumerable(Device, Root, GetSkipList());
+				folders.LogHandler += (sender, e) => OnLog(e.Message);
+				folders.ProgressHandler += (sender, e) => OnProgress(e.FileName);
+
+				foreach (var folder in folders)
+				{
+					OnProgress(folder.FullName);
+
+					foreach (MediaFileInfo file in folder.EnumerateFiles(SearchPattern))
+					{
+						OnProgress(file.FullName);
+
+						string target = Path.Combine(TargetFolder, NameTransformation.Invoke(file));
+
+						if (File.Exists(target) && (ulong)new FileInfo(target).Length == file.Length)
+						{
+							System.Diagnostics.Debug.WriteLine("{0}: {1} exists, skipping", file.FullName, target);
+							continue;
+						}
+						else if (File.Exists(target))
+						{
+							int i = 1;
+							string newName = target;
+							do
+								newName = Path.Combine(Path.GetDirectoryName(target), Path.GetFileNameWithoutExtension(target) + "_" + i++ + Path.GetExtension(target));
+							while (File.Exists(newName) && (ulong)new FileInfo(newName).Length != file.Length);
+
+							if (File.Exists(newName))
+							{
+								System.Diagnostics.Debug.WriteLine("{0}: {1} exists, skipping", file.FullName, newName);
+								continue;
+							}
+
+							System.Diagnostics.Debug.WriteLine("{0}: {1} exists, writing with new name {2}", file.FullName, target, newName);
+							yield return new ImageEntry(file, newName);
+						}
+						else
+						{
+							yield return new ImageEntry(file, target);
+						}
+					}
+				}
+			}
+
+			IEnumerator IEnumerable.GetEnumerator()
+			{
+				return GetEnumerator();
+			}
+		}
+
+	}
 }
