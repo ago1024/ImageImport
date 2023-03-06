@@ -2,13 +2,13 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net4.8</TargetFrameworks>
+    <TargetFrameworks>net48</TargetFrameworks>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
 	<ItemGroup>
 		<PackageReference Include="MediaDevices">
-			<Version>1.8.0</Version>
+			<Version>1.10.0</Version>
 		</PackageReference>
 	</ItemGroup>
 

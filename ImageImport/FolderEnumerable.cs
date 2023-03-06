@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ImageImport
 {
-	class FolderEnumerable : IEnumerable<MediaDirectoryInfo>
+	public class FolderEnumerable : IEnumerable<MediaDirectoryInfo>
 	{
 		private readonly MediaDevice Device;
 		private readonly MediaDirectoryInfo Root;

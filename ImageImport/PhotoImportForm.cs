@@ -160,18 +160,14 @@ namespace ImageImport
 			MediaDirectoryInfo root = device.GetRootDirectory();
 			string imageRoot = TargetFolder.Text;
 
-			string formatter(MediaFileInfo file) => string.Format(@"{1:yyyy-MM-dd}\{0}", file.Name, file.DateAuthored, device.FriendlyName);
-
-			IEnumerable<ImageEntry> entries = new List<ImageEntry>();
 			string[] searchPatterns = { "*.jpg" , "*.mp4" };
 
-			foreach (string searchPattern in searchPatterns) {
-				ImageEnumerable images = new ImageEnumerable(device, root, imageRoot, searchPattern, formatter);
+			var entries = searchPatterns.SelectMany(searchPattern => {
+				ImageEnumerable images = new ImageEnumerable(device, root, imageRoot, searchPattern, new DefaultMediaFileFormatter());
 				images.ProgressHandler += OnProgress;
 				images.LogHandler += OnLog;
-
-				entries = entries.Concat(images);
-			}
+				return images;
+			});
 
 			foreach (var entry in entries)
 			{
@@ -230,7 +226,7 @@ namespace ImageImport
 			private readonly MediaDirectoryInfo Root;
 			private readonly string TargetFolder;
 			private readonly string SearchPattern;
-			private readonly Func<MediaFileInfo, string> NameTransformation;
+			private readonly IMediaFileFormatter MediaFileFormatter;
 
 			public event EventHandler<ProgressEvent> ProgressHandler;
 
@@ -273,12 +269,12 @@ namespace ImageImport
 				OnLog(String.Format(format, args));
 			}
 
-			public ImageEnumerable(MediaDevice  device, MediaDirectoryInfo root, string targetFolder, string searchPattern, Func<MediaFileInfo, string> nameTransformation)
+			public ImageEnumerable(MediaDevice  device, MediaDirectoryInfo root, string targetFolder, string searchPattern, IMediaFileFormatter mediaFileFormatter)
 			{
 				Device = device;
 				Root = root;
 				TargetFolder = targetFolder;
-				NameTransformation = nameTransformation;
+				MediaFileFormatter = mediaFileFormatter;
 				SearchPattern = searchPattern;
 			}
 
@@ -306,11 +302,19 @@ namespace ImageImport
 					{
 						OnProgress(file.FullName);
 
-						string target = Path.Combine(TargetFolder, NameTransformation.Invoke(file));
+						string target = Path.Combine(TargetFolder, MediaFileFormatter.Format(file));
+						string broken = Path.Combine(TargetFolder, string.Format(@"0001-01-01\{0}", file.Name));
 
 						if (File.Exists(target) && (ulong)new FileInfo(target).Length == file.Length)
 						{
 							System.Diagnostics.Debug.WriteLine("{0}: {1} exists, skipping", file.FullName, target);
+							continue;
+						}
+						else if (broken != target && !File.Exists(target) && File.Exists(broken) && (ulong)new FileInfo(broken).Length == file.Length)
+						{
+							OnLog("{0}: {1} exists in wrong folder: {2}, moving", file.FullName, target, broken);
+							Directory.CreateDirectory(Path.GetDirectoryName(target));
+							File.Move(broken, target);
 							continue;
 						}
 						else if (File.Exists(target))
@@ -344,5 +348,34 @@ namespace ImageImport
 			}
 		}
 
+	}
+
+	public interface IMediaFileFormatter {
+
+		string Format(MediaFileInfo file);
+	}
+
+	public class DefaultMediaFileFormatter : IMediaFileFormatter
+	{
+
+		public static readonly DateTime MinDate = DateTime.Parse("1990-01-01T00:00:00Z");
+
+		private static DateTime? GetFileTime(MediaFileInfo file) {
+			if (file.DateAuthored != null && file.DateAuthored >= MinDate) {
+				return file.DateAuthored;
+			}
+			if (file.CreationTime != null && file.CreationTime >= MinDate) {
+				return file.CreationTime;
+			}
+			if (file.LastWriteTime != null && file.LastWriteTime >= MinDate) {
+				return file.LastWriteTime;
+			}
+			return file.DateAuthored;
+		}
+
+		public string Format(MediaFileInfo file)
+		{
+			return string.Format(@"{1:yyyy-MM-dd}\{0}", file.Name, GetFileTime(file));
+		}
 	}
 }
